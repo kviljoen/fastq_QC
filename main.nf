@@ -302,8 +302,9 @@ process decontaminate {
 	set val(pairId), file("${pairId}_cont.fq") into topublishdecontaminate
 	
 	script:
-	"""
 	markdup_java_options = (task.memory.toGiga() < 8) ? ${params.markdup_java_options} : "\"-Xms" +  (task.memory.toGiga()/10 )+"g "+ "-Xmx" + (task.memory.toGiga() - 30	)+ "g\""
+
+	"""
 	
 	#Decontaminate from foreign genomes
 	bbwrap.sh  ${markdup_java_options} mapper=bbmap append=t in1=${pairId}_trimmed_R1.fq,${pairId}_trimmed_singletons.fq in2=${pairId}_trimmed_R2.fq,null \

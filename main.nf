@@ -216,21 +216,21 @@ process bbduk {
 
 	script:
 	"""	
-	maxmem=\$(echo ${task.memory} | sed 's/ //g' | sed 's/B//g')
+        markdup_java_options = (task.memory.toGiga() < 8) ? ${params.markdup_java_options} : "\"-Xms" +  (task.memory.toGiga()/10 )+"g "+ "-Xmx" + (task.memory.toGiga() - 30	)+ "g\""
 
 	#Quality and adapter trim:
-	bbduk.sh -Xmx\"\$maxmem\" in=${pairId}_dedupe_R1.fq in2=${pairId}_dedupe_R2.fq out=${pairId}_trimmed_R1_tmp.fq \
+	bbduk.sh ${markdup_java_options} in=${pairId}_dedupe_R1.fq in2=${pairId}_dedupe_R2.fq out=${pairId}_trimmed_R1_tmp.fq \
 	out2=${pairId}_trimmed_R2_tmp.fq outs=${pairId}_trimmed_singletons_tmp.fq ktrim=r \
 	k=$params.kcontaminants mink=$params.mink hdist=$params.hdist qtrim=rl trimq=$params.phred \
 	minlength=$params.minlength ref=$adapters qin=$params.qin threads=${task.cpus} tbo tpe 
 	
 	#Synthetic contaminants trim:
-	bbduk.sh -Xmx\"\$maxmem\" in=${pairId}_trimmed_R1_tmp.fq in2=${pairId}_trimmed_R2_tmp.fq \
+	bbduk.sh ${markdup_java_options} in=${pairId}_trimmed_R1_tmp.fq in2=${pairId}_trimmed_R2_tmp.fq \
 	out=${pairId}_trimmed_R1.fq out2=${pairId}_trimmed_R2.fq k=31 ref=$phix174ill,$artifacts \
 	qin=$params.qin threads=${task.cpus} 
 
 	#Synthetic contaminants trim for singleton reads:
-	bbduk.sh -Xmx\"\$maxmem\" in=${pairId}_trimmed_singletons_tmp.fq out=${pairId}_trimmed_singletons.fq \
+	bbduk.sh ${markdup_java_options} in=${pairId}_trimmed_singletons_tmp.fq out=${pairId}_trimmed_singletons.fq \
 	k=31 ref=$phix174ill,$artifacts qin=$params.qin threads=${task.cpus}
 
 	#Removes tmp files. This avoids adding them to the output channels

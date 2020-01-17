@@ -183,7 +183,7 @@ process dedup {
         markdup_java_options = (task.memory.toGiga() < 8) ? ${params.markdup_java_options} : "\"-Xms" +  (task.memory.toGiga() / 2 )+"g "+ "-Xmx" + (task.memory.toGiga() - 8)+ "g\""
 
 	"""
-	clumpify.sh -XX:ParallelGCThreads=5 ${markdup_java_options} in1="${reads[0]}" in2="${reads[1]}" out1=${pairId}_dedupe_R1.fq out2=${pairId}_dedupe_R2.fq \
+	clumpify.sh ${markdup_java_options} in1="${reads[0]}" in2="${reads[1]}" out1=${pairId}_dedupe_R1.fq out2=${pairId}_dedupe_R2.fq \
 	qin=$params.qin dedupe subs=0 threads=${task.cpus}
 	
 	"""

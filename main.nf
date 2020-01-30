@@ -132,8 +132,9 @@ log.info "========================================="
  */
 
 process runFastQC {
+    cache 'deep'
     tag { "rFQC.${pairId}" }
-    publishDir "${params.outdir}/FilterAndTrim", mode: "copy", overwrite: false
+    publishDir "${params.outdir}/FilterAndTrim", mode: "copy"
 
     input:
         set pairId, file(in_fastq) from ReadPairsToQual
@@ -150,8 +151,9 @@ process runFastQC {
 }
 
 process runMultiQC{
+    cache 'deep'
     tag { "rMQC" }
-    publishDir "${params.outdir}/FilterAndTrim", mode: 'copy', overwrite: false
+    publishDir "${params.outdir}/FilterAndTrim", mode: 'copy'
 
     input:
         file('*') from fastqc_files.collect()
@@ -171,6 +173,7 @@ process runMultiQC{
  */
 
 process dedup {
+	cache 'deep'
 	tag { "dedup.${pairId}" }
 
 	input:
@@ -197,6 +200,7 @@ process dedup {
  */
 
 process bbduk {
+	cache 'deep'
 	tag{ "bbduk.${pairId}" }
 	
 	//bbduk reference files
@@ -247,8 +251,9 @@ process bbduk {
  */
 
 process runFastQC_postfilterandtrim {
+    cache 'deep'
     tag { "rFQC_post_FT.${pairId}" }
-    publishDir "${params.outdir}/FastQC_post_filter_trim", mode: "copy", overwrite: false
+    publishDir "${params.outdir}/FastQC_post_filter_trim", mode: "copy"
 
     input:
     	set val(pairId), file("${pairId}_trimmed_R1.fq"), file("${pairId}_trimmed_R2.fq") from filteredReadsforQC
@@ -265,8 +270,9 @@ process runFastQC_postfilterandtrim {
 }
 
 process runMultiQC_postfilterandtrim {
+	cache 'deep'
     tag { "rMQC_post_FT" }
-    publishDir "${params.outdir}/FastQC_post_filter_trim", mode: 'copy', overwrite: false
+    publishDir "${params.outdir}/FastQC_post_filter_trim", mode: 'copy'
 
     input:
         file('*') from fastqc_files_2.collect()
@@ -286,8 +292,9 @@ process runMultiQC_postfilterandtrim {
  */
 
 process decontaminate {
+	cache 'deep'
 	tag{ "decon.${pairId}" }
-	publishDir  "${params.outdir}/decontaminate" , mode: 'copy', pattern: "*_clean.fq.gz", overwrite: false
+	publishDir  "${params.outdir}/decontaminate" , mode: 'copy', pattern: "*_clean.fq.gz"
 	cache 'deep'
 	
 	refForeignGenome_ref = file(params.refForeignGenome, type: 'dir')
@@ -325,9 +332,10 @@ process decontaminate {
  */
 
 process metaphlan2 {
+	cache 'deep'
 	tag{ "metaphlan2.${pairId}" }
 	
-	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', pattern: "*.{biom,tsv}", overwrite: false
+	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', pattern: "*.{biom,tsv}"
 	
 	mpa_pkl_ref = file(params.mpa_pkl)
 	bowtie2db_ref = file(params.bowtie2db, type: 'dir')
@@ -364,9 +372,10 @@ process metaphlan2 {
  */
 
 process merge_metaphlan2 {
+	cache 'deep'
 	tag{ "merge_metaphlan2_table" }
 	
-	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', overwrite: false
+	publishDir  "${params.outdir}/metaphlan2", mode: 'copy'
 	
 	input: file('*') from metaphlantomerge.collect()
 	
@@ -389,8 +398,9 @@ process merge_metaphlan2 {
  */	
 
 process humann2 {
+	cache 'deep'
 	tag{ "humann2.${pairId}" }
-	publishDir  "${params.outdir}/humann2", mode: 'copy', pattern: "*.{tsv,log}", overwrite: false
+	publishDir  "${params.outdir}/humann2", mode: 'copy', pattern: "*.{tsv,log}"
 	
 	chocophlan_ref = file(params.chocophlan, type: 'dir')
 	uniref_ref = file(params.uniref, type: 'dir')
@@ -452,6 +462,7 @@ process humann2 {
  */	
 	
 process saveCCtmpfile {
+	cache 'deep'
 	tag{ "saveCCtmpfile" }
 	publishDir  "${params.outdir}/CCtmpfiles", mode: 'copy'
 		

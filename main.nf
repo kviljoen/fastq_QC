@@ -335,7 +335,7 @@ process metaphlan2 {
 	cache 'deep'
 	tag{ "metaphlan2.${pairId}" }
 	
-	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', pattern: "*.{biom,tsv}"
+	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', pattern: "*.tsv"
 	
 	mpa_pkl_ref = file(params.mpa_pkl)
 	bowtie2db_ref = file(params.bowtie2db, type: 'dir')
@@ -346,7 +346,6 @@ process metaphlan2 {
 	file bowtie2db from bowtie2db_ref
 
     	output:
-    	file "${pairId}.biom"
 	file "${pairId}_metaphlan_profile.tsv" into metaphlantohumann2, metaphlantomerge
 	file "${pairId}_bt2out.txt" into topublishprofiletaxa
 

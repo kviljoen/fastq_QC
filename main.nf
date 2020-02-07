@@ -356,7 +356,7 @@ process metaphlan2 {
 	rm -rf ${pairId}_bt2out.txt
 
 	#Estimate taxon abundances
-	metaphlan2.py --input_type fastq -t rel_ab_w_read_stats --tmp_dir=. --bowtie2out=${pairId}_bt2out.txt \
+	metaphlan2.py --input_type fastq --tmp_dir=. --biom ${pairId}.biom --bowtie2out=${pairId}_bt2out.txt \
 	--mpa_pkl $mpa_pkl  --bowtie2db $bowtie2db/$params.bowtie2dbfiles --bt2_ps $params.bt2options --nproc ${task.cpus} \
 	$infile ${pairId}_metaphlan_profile.tsv
 

@@ -40,6 +40,9 @@ def helpMessage() {
     MetaPhlAn2 parameters: 
       --bt2options 		   Presets options for BowTie2, default="very-sensitive"
       
+    Strainphlan parameters (optional):
+      --strain_of_interest	   Strain for tracking across samples in metaphlan2 format e.g. s__Bacteroides_caccae
+      
     Other options:
       --keepCCtmpfile		    Whether the temporary files resulting from MetaPhlAn2 and HUMAnN2 should be kept, default=false
       --outdir                      The output directory where the results will be saved
@@ -60,6 +63,7 @@ params.name = false
 //params.project = false
 params.email = false
 params.plaintext_email = false
+params.strain_of_interest = false
 
 // Show help emssage
 params.help = false
@@ -85,6 +89,10 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
   custom_runName = workflow.runName
 }
 
+// Returns a tuple of read pairs in the form
+// [sample_id, forward.fq, reverse.fq] where
+// the dataset_id is the shared prefix from
+// the two paired FASTQ files.
 Channel
     .fromFilePairs( params.reads )
     .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
@@ -134,6 +142,9 @@ log.info "========================================="
 process runFastQC {
     cache 'deep'
     tag { "rFQC.${pairId}" }
+
+    cache 'deep'
+
     publishDir "${params.outdir}/FilterAndTrim", mode: "copy"
 
     input:
@@ -153,6 +164,9 @@ process runFastQC {
 process runMultiQC{
     cache 'deep'
     tag { "rMQC" }
+
+    cache 'deep'
+
     publishDir "${params.outdir}/FilterAndTrim", mode: 'copy'
 
     input:
@@ -175,7 +189,7 @@ process runMultiQC{
 process dedup {
 	cache 'deep'
 	tag { "dedup.${pairId}" }
-
+	cache 'deep'
 	input:
 	set val(pairId), file(reads) from ReadPairs
 
@@ -202,7 +216,7 @@ process dedup {
 process bbduk {
 	cache 'deep'
 	tag{ "bbduk.${pairId}" }
-	
+	cache 'deep'
 	//bbduk reference files
 	adapters_ref = file(params.adapters)
 	artifacts_ref = file(params.artifacts)
@@ -253,6 +267,9 @@ process bbduk {
 process runFastQC_postfilterandtrim {
     cache 'deep'
     tag { "rFQC_post_FT.${pairId}" }
+
+    cache 'deep'
+
     publishDir "${params.outdir}/FastQC_post_filter_trim", mode: "copy"
 
     input:
@@ -272,6 +289,9 @@ process runFastQC_postfilterandtrim {
 process runMultiQC_postfilterandtrim {
 	cache 'deep'
     tag { "rMQC_post_FT" }
+
+    cache 'deep'
+
     publishDir "${params.outdir}/FastQC_post_filter_trim", mode: 'copy'
 
     input:
@@ -294,6 +314,9 @@ process runMultiQC_postfilterandtrim {
 process decontaminate {
 	cache 'deep'
 	tag{ "decon.${pairId}" }
+
+	cache 'deep'
+
 	publishDir  "${params.outdir}/decontaminate" , mode: 'copy', pattern: "*_clean.fq.gz"
 	cache 'deep'
 	
@@ -334,8 +357,9 @@ process decontaminate {
 process metaphlan2 {
 	cache 'deep'
 	tag{ "metaphlan2.${pairId}" }
-	
+
 	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', pattern: "*.tsv"
+
 	
 	mpa_pkl_ref = file(params.mpa_pkl)
 	bowtie2db_ref = file(params.bowtie2db, type: 'dir')
@@ -348,6 +372,7 @@ process metaphlan2 {
     	output:
 	file "${pairId}_metaphlan_profile.tsv" into metaphlantohumann2, metaphlantomerge
 	file "${pairId}_bt2out.txt" into topublishprofiletaxa
+	file "${pairId}_sam.bz2 into strainphlan
 
 
 	script:
@@ -357,6 +382,7 @@ process metaphlan2 {
 
 	#Estimate taxon abundances
 	metaphlan2.py --input_type fastq --tmp_dir=. --biom ${pairId}.biom --bowtie2out=${pairId}_bt2out.txt \
+	--samout ${pairId}_sam.bz2 \
 	--mpa_pkl $mpa_pkl  --bowtie2db $bowtie2db/$params.bowtie2dbfiles --bt2_ps $params.bt2options --nproc ${task.cpus} \
 	$infile ${pairId}_metaphlan_profile.tsv
 
@@ -399,6 +425,9 @@ process merge_metaphlan2 {
 process humann2 {
 	cache 'deep'
 	tag{ "humann2.${pairId}" }
+
+	cache 'deep'
+
 	publishDir  "${params.outdir}/humann2", mode: 'copy', pattern: "*.{tsv,log}"
 	
 	chocophlan_ref = file(params.chocophlan, type: 'dir')
@@ -451,12 +480,45 @@ process humann2 {
  	"""
 }
 
+/*
+ *
+ * Step 9: Strainphlan
+ *
+ */
 
+process strainphlan {
+	cache 'deep'
+	tag{ "strainphlan" }
+	
+	publishDir  "${params.outdir}/strainphlan", mode: 'copy'
+	
+	when:
+  	params.strain_of_interest
+  
+	input: 
+	file('*') from strainphlan.collect()
+	
+	output: 
+	file ""
+	
+	script:
+	"""
+	sample2markers.py --ifn_samples *.sam.bz2 --input_type sam --output_dir . --nprocs ${task.cpus} &> log.txt
+	
+	extract_markers.py --mpa_pkl $mpa_pkl --ifn_markers $metaphlan_markers \
+	--clade $strain_of_interest --ofn_markers "${strain_of_interest}.markers.fasta"
+	
+	strainphlan.py --mpa_pkl $mpa_pkl --ifn_samples *.markers --output_dir . --nprocs_main ${task.cpus} --print_clades_only > strainphlan_clades.txt
+
+	"""
+	
+	
+}
 
 
 /*
  *
- * Step 9:  Save tmp files from metaphlan2 and humann2 if requested
+ * Step 10:  Save tmp files from metaphlan2 and humann2 if requested
  *
  */	
 	
@@ -482,7 +544,7 @@ process saveCCtmpfile {
 
 /*
  *
- * Step 10: Completion e-mail notification
+ * Step 11: Completion e-mail notification
  *
  */
 workflow.onComplete {

@@ -40,6 +40,9 @@ def helpMessage() {
     MetaPhlAn2 parameters: 
       --bt2options 		   Presets options for BowTie2, default="very-sensitive"
       
+    Strainphlan parameters (optional):
+      --strain_of_interest	   Strain for tracking across samples in metaphlan2 format e.g. s__Bacteroides_caccae
+      
     Other options:
       --keepCCtmpfile		    Whether the temporary files resulting from MetaPhlAn2 and HUMAnN2 should be kept, default=false
       --outdir                      The output directory where the results will be saved
@@ -60,6 +63,7 @@ params.name = false
 //params.project = false
 params.email = false
 params.plaintext_email = false
+params.strain_of_interest = false
 
 // Show help emssage
 params.help = false
@@ -349,6 +353,7 @@ process metaphlan2 {
     	file "${pairId}.biom"
 	file "${pairId}_metaphlan_profile.tsv" into metaphlantohumann2, metaphlantomerge
 	file "${pairId}_bt2out.txt" into topublishprofiletaxa
+	file "${pairId}_sam.bz2 into strainphlan
 
 
 	script:
@@ -358,6 +363,7 @@ process metaphlan2 {
 
 	#Estimate taxon abundances
 	metaphlan2.py --input_type fastq --tmp_dir=. --biom ${pairId}.biom --bowtie2out=${pairId}_bt2out.txt \
+	--samout ${pairId}_sam.bz2 \
 	--mpa_pkl $mpa_pkl  --bowtie2db $bowtie2db/$params.bowtie2dbfiles --bt2_ps $params.bt2options --nproc ${task.cpus} \
 	$infile ${pairId}_metaphlan_profile.tsv
 
@@ -452,12 +458,45 @@ process humann2 {
  	"""
 }
 
+/*
+ *
+ * Step 9: Strainphlan
+ *
+ */
 
+process strainphlan {
+	cache 'deep'
+	tag{ "strainphlan" }
+	
+	publishDir  "${params.outdir}/strainphlan", mode: 'copy'
+	
+	when:
+  	params.strain_of_interest
+  
+	input: 
+	file('*') from strainphlan.collect()
+	
+	output: 
+	file ""
+	
+	script:
+	"""
+	sample2markers.py --ifn_samples *.sam.bz2 --input_type sam --output_dir . --nprocs ${task.cpus} &> log.txt
+	
+	extract_markers.py --mpa_pkl $mpa_pkl --ifn_markers $metaphlan_markers \
+	--clade $strain_of_interest --ofn_markers "${strain_of_interest}.markers.fasta"
+	
+	strainphlan.py --mpa_pkl $mpa_pkl --ifn_samples *.markers --output_dir . --nprocs_main ${task.cpus} --print_clades_only > strainphlan_clades.txt
+
+	"""
+	
+	
+}
 
 
 /*
  *
- * Step 9:  Save tmp files from metaphlan2 and humann2 if requested
+ * Step 10:  Save tmp files from metaphlan2 and humann2 if requested
  *
  */	
 	
@@ -482,7 +521,7 @@ process saveCCtmpfile {
 
 /*
  *
- * Step 10: Completion e-mail notification
+ * Step 11: Completion e-mail notification
  *
  */
 workflow.onComplete {

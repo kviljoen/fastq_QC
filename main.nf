@@ -372,7 +372,7 @@ process metaphlan2 {
     	output:
 	file "${pairId}_metaphlan_profile.tsv" into metaphlantohumann2, metaphlantomerge
 	file "${pairId}_bt2out.txt" into topublishprofiletaxa
-	file "${pairId}_sam.bz2 into strainphlan
+	file "${pairId}_sam.bz2" into strainphlan
 
 
 	script:

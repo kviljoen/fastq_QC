@@ -140,8 +140,11 @@ log.info "========================================="
  */
 
 process runFastQC {
-    tag { "rFQC.${pairId}" }
     cache 'deep'
+    tag { "rFQC.${pairId}" }
+
+    cache 'deep'
+
     publishDir "${params.outdir}/FilterAndTrim", mode: "copy"
 
     input:
@@ -159,8 +162,11 @@ process runFastQC {
 }
 
 process runMultiQC{
-    tag { "rMQC" }
     cache 'deep'
+    tag { "rMQC" }
+
+    cache 'deep'
+
     publishDir "${params.outdir}/FilterAndTrim", mode: 'copy'
 
     input:
@@ -181,6 +187,7 @@ process runMultiQC{
  */
 
 process dedup {
+	cache 'deep'
 	tag { "dedup.${pairId}" }
 	cache 'deep'
 	input:
@@ -190,10 +197,10 @@ process dedup {
 	set val(pairId), file("${pairId}_dedupe_R1.fq"), file("${pairId}_dedupe_R2.fq") into totrim, topublishdedupe
 
 	script:
-	"""
-	maxmem=\$(echo ${task.memory} | sed 's/ //g' | sed 's/B//g')
+        markdup_java_options = (task.memory.toGiga() < 8) ? ${params.markdup_java_options} : "\"-Xms" +  (task.memory.toGiga()/10 )+"g "+ "-Xmx" + (task.memory.toGiga() - 8)+ "g\""
 
-	clumpify.sh -Xmx\"\$maxmem\" in1="${reads[0]}" in2="${reads[1]}" out1=${pairId}_dedupe_R1.fq out2=${pairId}_dedupe_R2.fq \
+	"""
+	clumpify.sh ${markdup_java_options} in1="${reads[0]}" in2="${reads[1]}" out1=${pairId}_dedupe_R1.fq out2=${pairId}_dedupe_R2.fq \
 	qin=$params.qin dedupe subs=0 threads=${task.cpus}
 	
 	"""
@@ -207,6 +214,7 @@ process dedup {
  */
 
 process bbduk {
+	cache 'deep'
 	tag{ "bbduk.${pairId}" }
 	cache 'deep'
 	//bbduk reference files
@@ -225,22 +233,22 @@ process bbduk {
 	set val(pairId), file("${pairId}_trimmed_R1.fq"), file("${pairId}_trimmed_R2.fq") into filteredReadsforQC
 
 	script:
-	"""	
-	maxmem=\$(echo ${task.memory} | sed 's/ //g' | sed 's/B//g')
+	markdup_java_options = (task.memory.toGiga() < 8) ? ${params.markdup_java_options} : "\"-Xms" +  (task.memory.toGiga()/10 )+"g "+ "-Xmx" + (task.memory.toGiga()-8)+ "g\""
 
+	"""	
 	#Quality and adapter trim:
-	bbduk.sh -Xmx\"\$maxmem\" in=${pairId}_dedupe_R1.fq in2=${pairId}_dedupe_R2.fq out=${pairId}_trimmed_R1_tmp.fq \
+	bbduk.sh ${markdup_java_options} in=${pairId}_dedupe_R1.fq in2=${pairId}_dedupe_R2.fq out=${pairId}_trimmed_R1_tmp.fq \
 	out2=${pairId}_trimmed_R2_tmp.fq outs=${pairId}_trimmed_singletons_tmp.fq ktrim=r \
 	k=$params.kcontaminants mink=$params.mink hdist=$params.hdist qtrim=rl trimq=$params.phred \
 	minlength=$params.minlength ref=$adapters qin=$params.qin threads=${task.cpus} tbo tpe 
 	
 	#Synthetic contaminants trim:
-	bbduk.sh -Xmx\"\$maxmem\" in=${pairId}_trimmed_R1_tmp.fq in2=${pairId}_trimmed_R2_tmp.fq \
+	bbduk.sh ${markdup_java_options} in=${pairId}_trimmed_R1_tmp.fq in2=${pairId}_trimmed_R2_tmp.fq \
 	out=${pairId}_trimmed_R1.fq out2=${pairId}_trimmed_R2.fq k=31 ref=$phix174ill,$artifacts \
 	qin=$params.qin threads=${task.cpus} 
 
 	#Synthetic contaminants trim for singleton reads:
-	bbduk.sh -Xmx\"\$maxmem\" in=${pairId}_trimmed_singletons_tmp.fq out=${pairId}_trimmed_singletons.fq \
+	bbduk.sh ${markdup_java_options} in=${pairId}_trimmed_singletons_tmp.fq out=${pairId}_trimmed_singletons.fq \
 	k=31 ref=$phix174ill,$artifacts qin=$params.qin threads=${task.cpus}
 
 	#Removes tmp files. This avoids adding them to the output channels
@@ -257,8 +265,11 @@ process bbduk {
  */
 
 process runFastQC_postfilterandtrim {
-    tag { "rFQC_post_FT.${pairId}" }
     cache 'deep'
+    tag { "rFQC_post_FT.${pairId}" }
+
+    cache 'deep'
+
     publishDir "${params.outdir}/FastQC_post_filter_trim", mode: "copy"
 
     input:
@@ -276,8 +287,11 @@ process runFastQC_postfilterandtrim {
 }
 
 process runMultiQC_postfilterandtrim {
+	cache 'deep'
     tag { "rMQC_post_FT" }
+
     cache 'deep'
+
     publishDir "${params.outdir}/FastQC_post_filter_trim", mode: 'copy'
 
     input:
@@ -298,8 +312,11 @@ process runMultiQC_postfilterandtrim {
  */
 
 process decontaminate {
-	tag{ "decon.${pairId}" }
 	cache 'deep'
+	tag{ "decon.${pairId}" }
+
+	cache 'deep'
+
 	publishDir  "${params.outdir}/decontaminate" , mode: 'copy', pattern: "*_clean.fq.gz"
 	cache 'deep'
 	
@@ -315,11 +332,12 @@ process decontaminate {
 	set val(pairId), file("${pairId}_cont.fq") into topublishdecontaminate
 	
 	script:
+	markdup_java_options = (task.memory.toGiga() < 8) ? ${params.markdup_java_options} : "\"-Xms" +  (task.memory.toGiga()/10 )+"g "+ "-Xmx" + (task.memory.toGiga()-8)+ "g\""
+
 	"""
-	maxmem=\$(echo ${task.memory} | sed 's/ //g' | sed 's/B//g')
 	
 	#Decontaminate from foreign genomes
-	bbwrap.sh  -Xmx\"\$maxmem\" mapper=bbmap append=t in1=${pairId}_trimmed_R1.fq,${pairId}_trimmed_singletons.fq in2=${pairId}_trimmed_R2.fq,null \
+	bbwrap.sh  ${markdup_java_options} mapper=bbmap append=t in1=${pairId}_trimmed_R1.fq,${pairId}_trimmed_singletons.fq in2=${pairId}_trimmed_R2.fq,null \
 	outu=${pairId}_clean.fq outm=${pairId}_cont.fq minid=$params.mind \
 	maxindel=$params.maxindel bwr=$params.bwr bw=12 minhits=2 qtrim=rl trimq=$params.phred \
 	path=$refForeignGenome qin=$params.qin threads=${task.cpus} untrim quickmatch fast
@@ -337,9 +355,11 @@ process decontaminate {
  */
 
 process metaphlan2 {
-	tag{ "metaphlan2.${pairId}" }
 	cache 'deep'
-	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', pattern: "*.{biom,tsv}"
+	tag{ "metaphlan2.${pairId}" }
+
+	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', pattern: "*.tsv"
+
 	
 	mpa_pkl_ref = file(params.mpa_pkl)
 	bowtie2db_ref = file(params.bowtie2db, type: 'dir')
@@ -350,7 +370,6 @@ process metaphlan2 {
 	file bowtie2db from bowtie2db_ref
 
     	output:
-    	file "${pairId}.biom"
 	file "${pairId}_metaphlan_profile.tsv" into metaphlantohumann2, metaphlantomerge
 	file "${pairId}_bt2out.txt" into topublishprofiletaxa
 	file "${pairId}_sam.bz2 into strainphlan
@@ -404,8 +423,11 @@ process merge_metaphlan2 {
  */	
 
 process humann2 {
-	tag{ "humann2.${pairId}" }
 	cache 'deep'
+	tag{ "humann2.${pairId}" }
+
+	cache 'deep'
+
 	publishDir  "${params.outdir}/humann2", mode: 'copy', pattern: "*.{tsv,log}"
 	
 	chocophlan_ref = file(params.chocophlan, type: 'dir')
@@ -501,6 +523,7 @@ process strainphlan {
  */	
 	
 process saveCCtmpfile {
+	cache 'deep'
 	tag{ "saveCCtmpfile" }
 	publishDir  "${params.outdir}/CCtmpfiles", mode: 'copy'
 		

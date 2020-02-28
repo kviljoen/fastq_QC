@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:buster
 
 #Exports conda path
 ENV PATH $PATH:/opt/conda/bin/

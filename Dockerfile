@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     /opt/conda/bin/conda install --yes conda && \
     conda install conda-build && \
     #Update conda and uses it to install software used by YAMP
+    conda update conda -y && \
     #that is required to use YAMP on AWS Batch && \
     conda install -c bioconda -y bbmap fastqc multiqc metaphlan2 qiime humann2 &&\
     conda install -c conda-forge -y awscli &&\

@@ -239,17 +239,17 @@ process bbduk {
 	#Quality and adapter trim:
 	bbduk.sh ${markdup_java_options} in=${pairId}_dedupe_R1.fq in2=${pairId}_dedupe_R2.fq out=${pairId}_trimmed_R1_tmp.fq \
 	out2=${pairId}_trimmed_R2_tmp.fq outs=${pairId}_trimmed_singletons_tmp.fq ktrim=r \
-	k=$params.kcontaminants mink=$params.mink hdist=$params.hdist qtrim=rl trimq=$params.phred \
+	k=$params.kcontaminants tossjunk=t mink=$params.mink hdist=$params.hdist qtrim=rl trimq=$params.phred \
 	minlength=$params.minlength ref=$adapters qin=$params.qin threads=${task.cpus} tbo tpe 
 	
 	#Synthetic contaminants trim:
 	bbduk.sh ${markdup_java_options} in=${pairId}_trimmed_R1_tmp.fq in2=${pairId}_trimmed_R2_tmp.fq \
-	out=${pairId}_trimmed_R1.fq out2=${pairId}_trimmed_R2.fq k=31 ref=$phix174ill,$artifacts \
+	out=${pairId}_trimmed_R1.fq tossjunk=t out2=${pairId}_trimmed_R2.fq k=31 ref=$phix174ill,$artifacts \
 	qin=$params.qin threads=${task.cpus} 
 
 	#Synthetic contaminants trim for singleton reads:
 	bbduk.sh ${markdup_java_options} in=${pairId}_trimmed_singletons_tmp.fq out=${pairId}_trimmed_singletons.fq \
-	k=31 ref=$phix174ill,$artifacts qin=$params.qin threads=${task.cpus}
+	k=31 ref=$phix174ill,$artifacts tossjunk=t qin=$params.qin threads=${task.cpus}
 
 	#Removes tmp files. This avoids adding them to the output channels
 	rm -rf ${pairId}_trimmed*_tmp.fq 

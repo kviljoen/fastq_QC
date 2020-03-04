@@ -1,29 +1,23 @@
-FROM debian:buster
+FROM ubuntu:18.04
+MAINTAINER Gerrit Botha "gerrit.botha@uct.ac.za"
 
-#Exports conda path
-ENV PATH $PATH:/opt/conda/bin/
+# Followed instructions here: https://github.com/conda/conda-docker/tree/master/miniconda3/debian
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    bzip2 \
-    libglib2.0-0 \
-    libxext6 \
-    libsm6 \
-    libxrender1 \
-    wget \
-    ca-certificates \
-    bash \
-    procps \
-    wget \
-    curl \
-    gzip \
-    perl && \
-    wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-    /bin/bash /Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
-    /opt/conda/bin/conda install --yes conda && \
-    conda install conda-build && \
-    #Update conda and uses it to install software used by YAMP
-    conda update conda -y && \
-    #that is required to use YAMP on AWS Batch && \
-    conda install -c bioconda -y bbmap fastqc multiqc metaphlan2 qiime humann2 &&\
-    conda install -c conda-forge -y awscli &&\
-    conda clean --yes --tarballs --packages --source-cache
+RUN apt-get -qq update && apt-get -qq -y install curl bzip2 wget \
+    && curl -sSL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o /tmp/miniconda.sh \
+    && bash /tmp/miniconda.sh -bfp /usr/local \
+    && rm -rf /tmp/miniconda.sh \
+    && conda install -y python=2.7 \
+    && conda update conda \
+    && apt-get -qq -y remove curl bzip2 \
+    && apt-get -qq -y autoremove \
+    && apt-get autoclean \
+    && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log \
+    && conda clean --all --yes
+
+ENV PATH /opt/conda/bin:$PATH
+
+COPY environment.yml /
+RUN conda env create -f /environment.yml && conda clean -a
+
+ENV PATH /usr/local/envs/yamp/bin/:$PATH

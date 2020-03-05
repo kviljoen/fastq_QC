@@ -492,18 +492,15 @@ process strainphlan {
 	
 	publishDir  "${params.outdir}/strainphlan", mode: 'copy'
 	
-	mpa_pkl = file(params.mpa_pkl)
-	metaphlan_markers = file(params.metaphlan_markers)
-	strain_of_interest = val(params.strain_of_interest)
+	//mpa_pkl = file(params.mpa_pkl)
+	//metaphlan_markers = file(params.metaphlan_markers)
+	//strain_of_interest = val(params.strain_of_interest)
 	
 	when:
   	params.strain_of_interest
 	
 	input: 
 	file('*') from strainphlan.collect()
-	file mpa_pkl
-	file metaphlan_markers
-	val strain_of_interest
 	
 	output: 
 	file ""
@@ -512,10 +509,10 @@ process strainphlan {
 	"""
 	sample2markers.py --ifn_samples *.sam.bz2 --input_type sam --output_dir . --nprocs ${task.cpus} &> log.txt
 	
-	extract_markers.py --mpa_pkl $mpa_pkl --ifn_markers $metaphlan_markers \
-	--clade $strain_of_interest --ofn_markers "${strain_of_interest}.markers.fasta"
+	extract_markers.py --mpa_pkl ${mpa_pkl} --ifn_markers ${metaphlan_markers} \
+	--clade ${strain_of_interest} --ofn_markers "${strain_of_interest}.markers.fasta"
 	
-	strainphlan.py --mpa_pkl $mpa_pkl --ifn_samples *.markers --output_dir . --nprocs_main ${task.cpus} --print_clades_only > strainphlan_clades.txt
+	strainphlan.py --mpa_pkl ${mpa_pkl} --ifn_samples *.markers --output_dir . --nprocs_main ${task.cpus} --print_clades_only > strainphlan_clades.txt
 
 	"""
 	

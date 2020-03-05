@@ -494,8 +494,7 @@ process strainphlan {
 	
 	publishDir  "${params.outdir}/strainphlan", mode: 'copy'
 	
-	//mpa_pkl_ = file(params.mpa_pkl_s)
-	//metaphlan_markers = file(params.metaphlan_markers)
+	metaphlan_markers = file(params.metaphlan_markers)
 	
 	when:
   	params.strain_of_interest

@@ -98,7 +98,7 @@ Channel
     .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
     .into { ReadPairsToQual; ReadPairs }
 Channel
-    .file(params.mpa_pkl)
+    .fromPath(params.mpa_pkl)
     .ifEmpty { error "Cannot find --mpa_pkl file for metaphlan/strainphlan" }
     .into { mpa_pkl_m; mpa_pkl_s }
 

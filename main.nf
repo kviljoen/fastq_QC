@@ -500,6 +500,8 @@ process strainphlan {
 	
 	input: 
 	file('*') from strainphlan.collect()
+	file mpa_pkl
+	file metaphlan_markers
 	
 	output: 
 	file ""

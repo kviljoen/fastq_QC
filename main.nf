@@ -492,17 +492,18 @@ process strainphlan {
 	
 	publishDir  "${params.outdir}/strainphlan", mode: 'copy'
 	
+	mpa_pkl = file(params.mpa_pkl)
+	metaphlan_markers = file(params.metaphlan_markers)
+	strain_of_interest = val(params.strain_of_interest)
+	
 	when:
   	params.strain_of_interest
-  
-  	mpa_pkl_ref = file(params.mpa_pkl)
-	metaphlan_markers_ref = file(params.metaphlan_markers)
 	
 	input: 
 	file('*') from strainphlan.collect()
-	file mpa_pkl from mpa_pkl_ref
-	file metaphlan_markers from metaphlan_markers_ref
-	strain_of_interest from params.strain_of_interest
+	file mpa_pkl
+	file metaphlan_markers
+	val strain_of_interest
 	
 	output: 
 	file ""

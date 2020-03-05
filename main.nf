@@ -97,6 +97,10 @@ Channel
     .fromFilePairs( params.reads )
     .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
     .into { ReadPairsToQual; ReadPairs }
+Channel
+    .file(params.mpa_pkl)
+    .ifEmpty { error "Cannot find --mpa_pkl file for metaphlan/strainphlan" }
+    .into { mpa_pkl_m; mpa_pkl_s }
 
 // Header log info
 log.info "==================================="
@@ -360,13 +364,12 @@ process metaphlan2 {
 
 	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', pattern: "*.tsv"
 
-	
-	mpa_pkl_ref = file(params.mpa_pkl)
+	//mpa_pkl_ref = file(params.mpa_pkl)
 	bowtie2db_ref = file(params.bowtie2db, type: 'dir')
 	
 	input:
 	set val(pairId), file(infile) from cleanreadstometaphlan2
-	file mpa_pkl from mpa_pkl_ref
+	file mpa_pkl from mpa_pkl_m
 	file bowtie2db from bowtie2db_ref
 
     	output:
@@ -491,15 +494,15 @@ process strainphlan {
 	
 	publishDir  "${params.outdir}/strainphlan", mode: 'copy'
 	
-	mpa_pkl_ = file(params.mpa_pkl_s)
-	metaphlan_markers = file(params.metaphlan_markers)
+	//mpa_pkl_ = file(params.mpa_pkl_s)
+	//metaphlan_markers = file(params.metaphlan_markers)
 	
 	when:
   	params.strain_of_interest
 	
 	input: 
 	file('*') from strainphlan.collect()
-	file mpa_pkl_
+	file mpa_pkl from mpa_pkl_s
 	file metaphlan_markers
 	
 	output: 

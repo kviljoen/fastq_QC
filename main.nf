@@ -512,7 +512,7 @@ process strainphlan {
 	sample2markers.py --ifn_samples *.sam.bz2 --input_type sam --output_dir . --nprocs ${task.cpus} &> log.txt
 	
 	extract_markers.py --mpa_pkl $mpa_pkl --ifn_markers $metaphlan_markers \
-	--clade $params.strain_of_interest --ofn_markers "${strain_of_interest}.markers.fasta"
+	--clade $params.strain_of_interest --ofn_markers "${params.strain_of_interest}.markers.fasta"
 	
 	strainphlan.py --mpa_pkl $mpa_pkl --ifn_samples *.markers --output_dir . --nprocs_main ${task.cpus} --print_clades_only > strainphlan_clades.txt
 

@@ -9,6 +9,7 @@ RUN apt-get -qq update && apt-get -qq -y install curl bzip2 wget \
     && rm -rf /tmp/miniconda.sh \
     && conda install -y python=2.7 \
     && conda update conda \
+    && apt-get install -y procps \
     && apt-get -qq -y remove curl bzip2 \
     && apt-get -qq -y autoremove \
     && apt-get autoclean \

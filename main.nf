@@ -360,7 +360,7 @@ process decontaminate {
  */
 
 process metaphlan2 {
-	cache 'deep'
+	//cache 'deep'
 	tag{ "metaphlan2.${pairId}" }
 
 	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', pattern: "*.tsv"

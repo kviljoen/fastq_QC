@@ -148,8 +148,6 @@ process runFastQC {
     cache 'deep'
     tag { "rFQC.${pairId}" }
 
-    cache 'deep'
-
     publishDir "${params.outdir}/FilterAndTrim", mode: "copy"
 
     input:
@@ -169,8 +167,6 @@ process runFastQC {
 process runMultiQC{
     cache 'deep'
     tag { "rMQC" }
-
-    cache 'deep'
 
     publishDir "${params.outdir}/FilterAndTrim", mode: 'copy'
 
@@ -194,7 +190,7 @@ process runMultiQC{
 process dedup {
 	cache 'deep'
 	tag { "dedup.${pairId}" }
-	cache 'deep'
+	
 	input:
 	set val(pairId), file(reads) from ReadPairs
 
@@ -221,7 +217,7 @@ process dedup {
 process bbduk {
 	cache 'deep'
 	tag{ "bbduk.${pairId}" }
-	cache 'deep'
+	
 	//bbduk reference files
 	adapters_ref = file(params.adapters)
 	artifacts_ref = file(params.artifacts)
@@ -273,8 +269,6 @@ process runFastQC_postfilterandtrim {
     cache 'deep'
     tag { "rFQC_post_FT.${pairId}" }
 
-    cache 'deep'
-
     publishDir "${params.outdir}/FastQC_post_filter_trim", mode: "copy"
 
     input:
@@ -294,8 +288,6 @@ process runFastQC_postfilterandtrim {
 process runMultiQC_postfilterandtrim {
 	cache 'deep'
     tag { "rMQC_post_FT" }
-
-    cache 'deep'
 
     publishDir "${params.outdir}/FastQC_post_filter_trim", mode: 'copy'
 
@@ -320,10 +312,7 @@ process decontaminate {
 	cache 'deep'
 	tag{ "decon.${pairId}" }
 
-	cache 'deep'
-
 	publishDir  "${params.outdir}/decontaminate" , mode: 'copy', pattern: "*_clean.fq.gz"
-	cache 'deep'
 	
 	refForeignGenome_ref = file(params.refForeignGenome, type: 'dir')
 
@@ -360,7 +349,7 @@ process decontaminate {
  */
 
 process metaphlan2 {
-	//cache 'deep'
+	cache 'deep'
 	tag{ "metaphlan2.${pairId}" }
 
 	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', pattern: "*.tsv"
@@ -430,8 +419,6 @@ process humann2 {
 	cache 'deep'
 	tag{ "humann2.${pairId}" }
 
-	cache 'deep'
-
 	publishDir  "${params.outdir}/humann2", mode: 'copy', pattern: "*.{tsv,log}"
 	
 	chocophlan_ref = file(params.chocophlan, type: 'dir')
@@ -491,6 +478,7 @@ process humann2 {
  */
 
 process strainphlan {
+	cache 'deep'
 	tag{ "strainphlan" }
 	
 	publishDir  "${params.outdir}/strainphlan", mode: 'copy'

@@ -514,7 +514,7 @@ process strainphlan {
 	extract_markers.py --mpa_pkl $mpa_pkl --ifn_markers $metaphlan_markers \
 	--clade $params.strain_of_interest --ofn_markers "${params.strain_of_interest}.markers.fasta"
 	
-	strainphlan.py --mpa_pkl $mpa_pkl --ifn_samples *.markers --output_dir . --nprocs_main ${task.cpus} --print_clades_only > strainphlan_clades.txt
+	strainphlan.py --mpa_pkl $mpa_pkl --ifn_samples *.markers.fasta --output_dir . --nprocs_main ${task.cpus} --print_clades_only > strainphlan_clades.txt
 
 	"""
 	

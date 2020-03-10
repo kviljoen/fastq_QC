@@ -354,12 +354,12 @@ process metaphlan2 {
 
 	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', pattern: "*.tsv"
 
-	mpa_pkl_ref = file(params.mpa_pkl_m)
 	bowtie2db_ref = file(params.bowtie2db, type: 'dir')
 	
 	input:
 	set val(pairId), file(infile) from cleanreadstometaphlan2
-	file mpa_pkl from mpa_pkl_ref
+	//because mpa_pkl is used for metaphlan2 and strainphlan processes it needs to be defined with a channel and referenced here with .collect() otherwise it will only run one samples
+	file mpa_pkl from mpa_pkl_m.collect()  
 	file bowtie2db from bowtie2db_ref
 
     	output:
@@ -490,7 +490,7 @@ process strainphlan {
 	
 	input: 
 	file('*') from strainphlan.collect()
-	file mpa_pkl from mpa_pkl_s
+	file mpa_pkl from mpa_pkl_s.collect()
 	file metaphlan_markers from MM
 	
 	output: 

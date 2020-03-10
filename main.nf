@@ -473,13 +473,41 @@ process humann2 {
 
 /*
  *
- * Step 9: Strainphlan
+ * Step 9: Strainphlan: sample2markers
  *
  */
 
-process strainphlan {
+process strainphlan_1 {
 	cache 'deep'
-	tag{ "strainphlan" }
+	tag{ "strainphlan_1" }
+	
+	publishDir  "${params.outdir}/strainphlan", mode: 'copy'
+		
+	
+	input: 
+	file('*') from strainphlan.collect()
+	
+	output: 
+	file "*"
+	file "*.markers" into sample_markers
+	
+	script:
+	"""
+	sample2markers.py --ifn_samples *sam.bz2 --input_type sam --output_dir . --nprocs ${task.cpus} &> log.txt
+
+	"""
+	
+	
+}
+/*
+ *
+ * Step 10:  Strainphlan strain-specific tree
+ *
+ */
+
+process strainphlan_2 {
+	cache 'deep'
+	tag{ "strainphlan_2" }
 	
 	publishDir  "${params.outdir}/strainphlan", mode: 'copy'
 	
@@ -489,7 +517,7 @@ process strainphlan {
   	params.strain_of_interest
 	
 	input: 
-	file('*') from strainphlan.collect()
+	file ("*") from sample_markers.collect()
 	file mpa_pkl from mpa_pkl_s.collect()
 	file metaphlan_markers from MM
 	
@@ -498,26 +526,19 @@ process strainphlan {
 	
 	script:
 	"""
-	sample2markers.py --ifn_samples *sam.bz2 --input_type sam --output_dir . --nprocs ${task.cpus} &> log.txt
-	
-	strainphlan.py --mpa_pkl $mpa_pkl --ifn_samples *.markers --output_dir . --nprocs_main ${task.cpus} --print_clades_only > strainphlan_clades.txt
-
-	
 	extract_markers.py --mpa_pkl $mpa_pkl --ifn_markers $metaphlan_markers \
 	--clade $params.strain_of_interest --ofn_markers "${params.strain_of_interest}.markers.fasta"
 		
 	strainphlan.py --ifn_samples *.markers --ifn_markers "${params.strain_of_interest}.markers.fasta" --ifn_ref_genomes $params.strain_reference_genome \
-                                                                                 --output_dir . --clades $params.strain_of_interest
+        --output_dir . --clades $params.strain_of_interest
 
 	"""
 	
 	
 }
-
-
 /*
  *
- * Step 10:  Save tmp files from metaphlan2 and humann2 if requested
+ * Step 11:  Save tmp files from metaphlan2 and humann2 if requested
  *
  */	
 	

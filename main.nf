@@ -481,14 +481,13 @@ process strainphlan_1 {
 	cache 'deep'
 	tag{ "strainphlan_1" }
 	
-	publishDir  "${params.outdir}/strainphlan", mode: 'copy'
+	publishDir  "${params.outdir}/strainphlan", mode: 'copy', pattern: "*.markers"
 		
 	
 	input: 
 	file('*') from strainphlan.collect()
 	
 	output: 
-	file "*"
 	file "*.markers" into sample_markers
 	
 	script:
@@ -526,6 +525,8 @@ process strainphlan_2 {
 	
 	script:
 	"""
+	strainphlan.py --ifn_samples *.markers --output_dir . --print_clades_only > clades.txt
+
 	extract_markers.py --mpa_pkl $mpa_pkl --ifn_markers $metaphlan_markers \
 	--clade $params.strain_of_interest --ofn_markers "${params.strain_of_interest}.markers.fasta"
 		

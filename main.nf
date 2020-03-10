@@ -525,12 +525,12 @@ process strainphlan_2 {
 	
 	script:
 	"""
-	strainphlan.py --ifn_samples *.markers --output_dir . --print_clades_only > clades.txt
+	strainphlan.py --mpa_pkl $mpa_pkl --ifn_samples *.markers --output_dir . --print_clades_only > clades.txt
 
 	extract_markers.py --mpa_pkl $mpa_pkl --ifn_markers $metaphlan_markers \
 	--clade $params.strain_of_interest --ofn_markers "${params.strain_of_interest}.markers.fasta"
 		
-	strainphlan.py --ifn_samples *.markers --ifn_markers "${params.strain_of_interest}.markers.fasta" --ifn_ref_genomes $params.strain_reference_genome \
+	strainphlan.py --mpa_pkl $mpa_pkl --ifn_samples *.markers --ifn_markers "${params.strain_of_interest}.markers.fasta" --ifn_ref_genomes $params.strain_reference_genome \
         --output_dir . --clades $params.strain_of_interest
 
 	"""

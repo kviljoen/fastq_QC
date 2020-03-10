@@ -354,12 +354,12 @@ process metaphlan2 {
 
 	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', pattern: "*.tsv"
 
-	//mpa_pkl_ref = file(params.mpa_pkl)
+	mpa_pkl_ref = file(params.mpa_pkl_m)
 	bowtie2db_ref = file(params.bowtie2db, type: 'dir')
 	
 	input:
 	set val(pairId), file(infile) from cleanreadstometaphlan2
-	file mpa_pkl from mpa_pkl_m
+	file mpa_pkl from mpa_pkl_ref
 	file bowtie2db from bowtie2db_ref
 
     	output:

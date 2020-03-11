@@ -72,12 +72,7 @@ if (params.help){
     helpMessage()
     exit 0
 }
-
-//Validate inputs	
-
-//if (params.librarylayout != "paired" && params.librarylayout != "single") { 
-//	exit 1, "Library layout not available. Choose any of <single, paired>" 
-//}   
+ 
 
 if (params.qin != 33 && params.qin != 64) {  
 	exit 1, "Input quality offset (qin) not available. Choose either 33 (ASCII+33) or 64 (ASCII+64)" 
@@ -98,10 +93,56 @@ Channel
     .fromFilePairs( params.reads )
     .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
     .into { ReadPairsToQual; ReadPairs }
+
+//Input reference files validation:
+//BDUK reference files:
+Channel
+    .fromPath(params.adapters)
+    .ifEmpty { exit 1, "BBDUK adapter file not found: ${params.adapters}"  }
+    .into { adapters_ref }
+Channel
+    .fromPath(params.artifacts)
+    .ifEmpty { exit 1, "BBDUK adapter file not found: ${params.artifacts}"  }
+    .into { artifacts_ref }
+Channel
+    .fromPath(params.phix174ill)
+    .ifEmpty { exit 1, "BBDUK phix file not found: ${params.phix174ill}"  }
+    .into { phix174ill_ref }
+    
+//process decontaminate validate reference file
+Channel
+    .fromPath(params.refForeignGenome, type: 'dir')
+    .ifEmpty { exit 1, "BBDUK foreign genome reference file not found: ${params.refForeignGenome}"  }
+    .into { refForeignGenome_ref }
+
+//metaphlan bowtie reference DB
+Channel
+    .fromPath(params.bowtie2db, type: 'dir')
+    .ifEmpty { exit 1, "Bowtie2 DB reference file not found: ${params.bowtie2db}"  }
+    .into { bowtie2db_ref }
+
+//mpa_pkl send to both metaphlan and strainphlan
 Channel
     .fromPath(params.mpa_pkl)
-    .ifEmpty { error "Cannot find --mpa_pkl file for metaphlan/strainphlan" }
+    .ifEmpty { exit 1, "--mpa_pkl file for metaphlan/strainphlan not found: ${params.mpa_pkl}" }
     .into { mpa_pkl_m; mpa_pkl_s }
+    
+//humann2 reference files
+Channel
+    .fromPath(params.chocophlan, type: 'dir')
+    .ifEmpty { exit 1, "Chocophlan reference file for humann2 not found: ${params.chocophlan}" }
+    .into { chocophlan_ref }
+Channel
+    .fromPath(params.uniref, type: 'dir')
+    .ifEmpty { exit 1, "Uniref reference file for humann2 not found: ${params.chocophlan}" }
+    .into { uniref_ref }
+        
+//Strainphlan_2 ref files
+Channel
+    .fromPath(params.metaphlan_markers, type: 'dir')
+    .ifEmpty { exit 1, "Metaphlan markers file for strainphlan not found: ${params.metaphlan_markers)}" }
+    .into { MM }
+    
 
 // Header log info
 log.info "==================================="
@@ -218,11 +259,6 @@ process bbduk {
 	cache 'deep'
 	tag{ "bbduk.${pairId}" }
 	
-	//bbduk reference files
-	adapters_ref = file(params.adapters)
-	artifacts_ref = file(params.artifacts)
-	phix174ill_ref = file(params.phix174ill)
-	
 	input:
 	set val(pairId), file("${pairId}_dedupe_R1.fq"), file("${pairId}_dedupe_R2.fq") from totrim
 	file adapters from adapters_ref
@@ -313,8 +349,6 @@ process decontaminate {
 	tag{ "decon.${pairId}" }
 
 	publishDir  "${params.outdir}/decontaminate" , mode: 'copy', pattern: "*_clean.fq.gz"
-	
-	refForeignGenome_ref = file(params.refForeignGenome, type: 'dir')
 
 	input:
 	set val(pairId), file("${pairId}_trimmed_R1.fq"), file("${pairId}_trimmed_R2.fq"), file("${pairId}_trimmed_singletons.fq") from todecontaminate
@@ -354,8 +388,6 @@ process metaphlan2 {
 
 	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', pattern: "*.tsv"
 
-	bowtie2db_ref = file(params.bowtie2db, type: 'dir')
-	
 	input:
 	set val(pairId), file(infile) from cleanreadstometaphlan2
 	//because mpa_pkl is used for metaphlan2 and strainphlan processes it needs to be defined with a channel and referenced here with .collect() otherwise it will only run one samples
@@ -421,8 +453,6 @@ process humann2 {
 
 	publishDir  "${params.outdir}/humann2", mode: 'copy', pattern: "*.{tsv,log}"
 	
-	chocophlan_ref = file(params.chocophlan, type: 'dir')
-	uniref_ref = file(params.uniref, type: 'dir')
 	
 	input:
 	set val(pairId), file(cleanreads) from cleanreadstohumann2
@@ -482,8 +512,7 @@ process strainphlan_1 {
 	tag{ "strainphlan_1" }
 	
 	publishDir  "${params.outdir}/strainphlan", mode: 'copy', pattern: "*.markers"
-		
-	
+			
 	input: 
 	file('*') from strainphlan.collect()
 	
@@ -509,9 +538,7 @@ process strainphlan_2 {
 	tag{ "strainphlan_2" }
 	
 	publishDir  "${params.outdir}/strainphlan", mode: 'copy'
-	
-	MM = file(params.metaphlan_markers)
-	
+		
 	when:
   	params.strain_of_interest
 	

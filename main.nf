@@ -140,7 +140,7 @@ Channel
 //Strainphlan_2 ref files
 Channel
     .fromPath(params.metaphlan_markers, type: 'dir')
-    .ifEmpty { exit 1, "Metaphlan markers file for strainphlan not found: ${params.metaphlan_markers)}" }
+    .ifEmpty { exit 1, "Metaphlan markers file for strainphlan not found: ${params.metaphlan_markers}" }
     .into { MM }
     
 

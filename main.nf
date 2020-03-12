@@ -261,9 +261,9 @@ process bbduk {
 	
 	input:
 	set val(pairId), file("${pairId}_dedupe_R1.fq"), file("${pairId}_dedupe_R2.fq") from totrim
-	file adapters from adapters_ref
-	file artifacts from artifacts_ref
-	file phix174ill from phix174ill_ref
+	file adapters from adapters_ref.collect()
+	file artifacts from artifacts_ref.collect()
+	file phix174ill from phix174ill_ref.collect()
 
 	output:
 	set val(pairId), file("${pairId}_trimmed_R1.fq"), file("${pairId}_trimmed_R2.fq"), file("${pairId}_trimmed_singletons.fq") into todecontaminate
@@ -352,7 +352,7 @@ process decontaminate {
 
 	input:
 	set val(pairId), file("${pairId}_trimmed_R1.fq"), file("${pairId}_trimmed_R2.fq"), file("${pairId}_trimmed_singletons.fq") from todecontaminate
-	file refForeignGenome from refForeignGenome_ref
+	file refForeignGenome from refForeignGenome_ref.collect()
 	
 	output:
 	file "*_clean.fq.gz"
@@ -392,7 +392,7 @@ process metaphlan2 {
 	set val(pairId), file(infile) from cleanreadstometaphlan2
 	//because mpa_pkl is used for metaphlan2 and strainphlan processes it needs to be defined with a channel and referenced here with .collect() otherwise it will only run one samples
 	file mpa_pkl from mpa_pkl_m.collect()  
-	file bowtie2db from bowtie2db_ref
+	file bowtie2db from bowtie2db_ref.colelct()
 
     	output:
 	file "${pairId}_metaphlan_profile.tsv" into metaphlantohumann2, metaphlantomerge
@@ -456,9 +456,9 @@ process humann2 {
 	
 	input:
 	set val(pairId), file(cleanreads) from cleanreadstohumann2
-	file(humann2_profile) from metaphlantohumann2
-	file chocophlan from chocophlan_ref
-	file uniref from uniref_ref
+	file humann2_profile from metaphlantohumann2
+	file chocophlan from chocophlan_ref.collect()
+	file uniref from uniref_ref.collect()
 	
     	output:
 	file "${pairId}_genefamilies.tsv"
@@ -545,7 +545,7 @@ process strainphlan_2 {
 	input: 
 	file ("*") from sample_markers.collect()
 	file mpa_pkl from mpa_pkl_s.collect()
-	file metaphlan_markers from MM
+	file metaphlan_markers from MM.collect()
 	
 	output: 
 	file "*"

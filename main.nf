@@ -392,7 +392,7 @@ process metaphlan2 {
 	set val(pairId), file(infile) from cleanreadstometaphlan2
 	//because mpa_pkl is used for metaphlan2 and strainphlan processes it needs to be defined with a channel and referenced here with .collect() otherwise it will only run one samples
 	file mpa_pkl from mpa_pkl_m.collect()  
-	file bowtie2db from bowtie2db_ref.colelct()
+	file bowtie2db from bowtie2db_ref.collect()
 
     	output:
 	file "${pairId}_metaphlan_profile.tsv" into metaphlantohumann2, metaphlantomerge

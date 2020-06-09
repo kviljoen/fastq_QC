@@ -1,9 +1,9 @@
 #!/usr/bin/env nextflow
 /*
 ========================================================================================
-               M E T A G E N O M I C S   P I P E L I N E
+                              QC   P I P E L I N E
 ========================================================================================
- METAGENOMICS NEXTFLOW PIPELINE ADAPTED FROM YAMP FOR UCT CBIO
+ 
  
 ----------------------------------------------------------------------------------------
 */
@@ -15,11 +15,11 @@
 def helpMessage() {
     log.info"""
     ===================================
-     uct-yamp  ~  version ${params.version}
+     fastq_QC  ~  version ${params.version}
     ===================================
     Usage:
     The typical command for running the pipeline is as follows:
-    nextflow run uct-cbio/uct-yamp --reads '*_R{1,2}.fastq.gz' -profile uct_hex
+    nextflow run kviljoen/fastq_QC --reads '*_R{1,2}.fastq.gz' -profile uct_hpc
     Mandatory arguments:
       --reads                       Path to input data (must be surrounded with quotes)
       -profile                      Hardware config to use. uct_hex OR standard
@@ -32,19 +32,8 @@ def helpMessage() {
       --mink			    Shorter kmers at read tips to look for, default=11 
       --hdist			    Maximum Hamming distance for ref kmers, default=1            
 
-    BBwrap parameters for decontamination:	
-      --mind			   Approximate minimum alignment identity to look for, default=0.95
-      --maxindel		   Longest indel to look for, default=3
-      --bwr			   Restrict alignment band to this, default=0.16
-	
-    MetaPhlAn2 parameters: 
-      --bt2options 		   Presets options for BowTie2, default="very-sensitive"
-      
-    Strainphlan parameters (optional):
-      --strain_of_interest	   Strain for tracking across samples in metaphlan2 format e.g. s__Bacteroides_caccae
       
     Other options:
-      --keepCCtmpfile		    Whether the temporary files resulting from MetaPhlAn2 and HUMAnN2 should be kept, default=false
       --outdir                      The output directory where the results will be saved
       --email                       Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits
       -name                         Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.
@@ -63,8 +52,7 @@ params.name = false
 //params.project = false
 params.email = false
 params.plaintext_email = false
-params.strain_of_interest = false
-params.strain_reference_genome = false
+
 
 // Show help emssage
 params.help = false
@@ -108,45 +96,11 @@ Channel
     .fromPath(params.phix174ill)
     .ifEmpty { exit 1, "BBDUK phix file not found: ${params.phix174ill}"  }
     .into { phix174ill_ref }
-    
-//process decontaminate validate reference file
-Channel
-    .fromPath(params.refForeignGenome, type: 'dir')
-    .ifEmpty { exit 1, "BBDUK foreign genome reference file not found: ${params.refForeignGenome}"  }
-    .into { refForeignGenome_ref }
-
-//metaphlan bowtie reference DB
-Channel
-    .fromPath(params.bowtie2db, type: 'dir')
-    .ifEmpty { exit 1, "Bowtie2 DB reference file not found: ${params.bowtie2db}"  }
-    .into { bowtie2db_ref }
-
-//mpa_pkl send to both metaphlan and strainphlan
-Channel
-    .fromPath(params.mpa_pkl)
-    .ifEmpty { exit 1, "--mpa_pkl file for metaphlan/strainphlan not found: ${params.mpa_pkl}" }
-    .into { mpa_pkl_m; mpa_pkl_s }
-    
-//humann2 reference files
-Channel
-    .fromPath(params.chocophlan, type: 'dir')
-    .ifEmpty { exit 1, "Chocophlan reference file for humann2 not found: ${params.chocophlan}" }
-    .into { chocophlan_ref }
-Channel
-    .fromPath(params.uniref, type: 'dir')
-    .ifEmpty { exit 1, "Uniref reference file for humann2 not found: ${params.chocophlan}" }
-    .into { uniref_ref }
-        
-//Strainphlan_2 ref files
-Channel
-    .fromPath(params.metaphlan_markers, type: 'dir')
-    .ifEmpty { exit 1, "Metaphlan markers file for strainphlan not found: ${params.metaphlan_markers}" }
-    .into { MM }
-    
+      
 
 // Header log info
 log.info "==================================="
-log.info " uct-yamp  ~  version ${params.version}"
+log.info " fastq_QC  ~  version ${params.version}"
 log.info "==================================="
 def summary = [:]
 summary['Run Name']     = custom_runName ?: workflow.runName
@@ -222,36 +176,10 @@ process runMultiQC{
     """
 }
 
-/*
- *
- * Step 2: De-duplication (run per sample)
- *
- */
-
-process dedup {
-	cache 'deep'
-	tag { "dedup.${pairId}" }
-	
-	input:
-	set val(pairId), file(reads) from ReadPairs
-
-	output:
-	set val(pairId), file("${pairId}_dedupe_R1.fq"), file("${pairId}_dedupe_R2.fq") into totrim, topublishdedupe
-
-	script:
-        markdup_java_options = (task.memory.toGiga() < 8) ? ${params.markdup_java_options} : "\"-Xms" +  (task.memory.toGiga()/10 )+"g "+ "-Xmx" + (task.memory.toGiga() - 8)+ "g\""
-
-	"""
-	clumpify.sh ${markdup_java_options} in1="${reads[0]}" in2="${reads[1]}" out1=${pairId}_dedupe_R1.fq out2=${pairId}_dedupe_R2.fq \
-	qin=$params.qin dedupe subs=0 threads=${task.cpus}
-	
-	"""
-}
-
 
 /*
  *
- * Step 3: BBDUK: trim + filter (run per sample)
+ * Step 2: BBDUK: trim + filter (run per sample)
  *
  */
 
@@ -259,14 +187,15 @@ process bbduk {
 	cache 'deep'
 	tag{ "bbduk.${pairId}" }
 	
+	publishDir "${params.outdir}/bbduk", mode: "copy"
+	
 	input:
-	set val(pairId), file("${pairId}_dedupe_R1.fq"), file("${pairId}_dedupe_R2.fq") from totrim
+	set val(pairId), file(reads) from ReadPairs
 	file adapters from adapters_ref.collect()
 	file artifacts from artifacts_ref.collect()
 	file phix174ill from phix174ill_ref.collect()
 
 	output:
-	set val(pairId), file("${pairId}_trimmed_R1.fq"), file("${pairId}_trimmed_R2.fq"), file("${pairId}_trimmed_singletons.fq") into todecontaminate
 	set val(pairId), file("${pairId}_trimmed_R1.fq"), file("${pairId}_trimmed_R2.fq") into filteredReadsforQC
 
 	script:
@@ -274,7 +203,7 @@ process bbduk {
 
 	"""	
 	#Quality and adapter trim:
-	bbduk.sh ${markdup_java_options} in=${pairId}_dedupe_R1.fq in2=${pairId}_dedupe_R2.fq out=${pairId}_trimmed_R1_tmp.fq \
+	bbduk.sh ${markdup_java_options} in=${pairId}_R1.fq in2=${pairId}_R2.fq out=${pairId}_trimmed_R1_tmp.fq \
 	out2=${pairId}_trimmed_R2_tmp.fq outs=${pairId}_trimmed_singletons_tmp.fq ktrim=r \
 	k=$params.kcontaminants tossjunk=t mink=$params.mink hdist=$params.hdist qtrim=rl trimq=$params.phred \
 	minlength=$params.minlength ref=$adapters qin=$params.qin threads=${task.cpus} tbo tpe 
@@ -283,10 +212,6 @@ process bbduk {
 	bbduk.sh ${markdup_java_options} in=${pairId}_trimmed_R1_tmp.fq in2=${pairId}_trimmed_R2_tmp.fq \
 	out=${pairId}_trimmed_R1.fq tossjunk=t out2=${pairId}_trimmed_R2.fq k=31 ref=$phix174ill,$artifacts \
 	qin=$params.qin threads=${task.cpus} 
-
-	#Synthetic contaminants trim for singleton reads:
-	bbduk.sh ${markdup_java_options} in=${pairId}_trimmed_singletons_tmp.fq out=${pairId}_trimmed_singletons.fq \
-	k=31 ref=$phix174ill,$artifacts tossjunk=t qin=$params.qin threads=${task.cpus}
 
 	#Removes tmp files. This avoids adding them to the output channels
 	rm -rf ${pairId}_trimmed*_tmp.fq 
@@ -297,7 +222,7 @@ process bbduk {
 
 /*
  *
- * Step 4: FastQC post-filter and -trim (run per sample)
+ * Step 3: FastQC post-filter and -trim (run per sample)
  *
  */
 
@@ -340,266 +265,14 @@ process runMultiQC_postfilterandtrim {
 
 /*
  *
- * Step 5: Decontamination (run per sample)
- *
- */
-
-process decontaminate {
-	cache 'deep'
-	tag{ "decon.${pairId}" }
-
-	publishDir  "${params.outdir}/decontaminate" , mode: 'copy', pattern: "*_clean.fq.gz"
-
-	input:
-	set val(pairId), file("${pairId}_trimmed_R1.fq"), file("${pairId}_trimmed_R2.fq"), file("${pairId}_trimmed_singletons.fq") from todecontaminate
-	file refForeignGenome from refForeignGenome_ref.collect()
-	
-	output:
-	file "*_clean.fq.gz"
-	set val(pairId), file("${pairId}_clean.fq") into cleanreadstometaphlan2, cleanreadstohumann2 
-	set val(pairId), file("${pairId}_cont.fq") into topublishdecontaminate
-	
-	script:
-	markdup_java_options = (task.memory.toGiga() < 8) ? ${params.markdup_java_options} : "\"-Xms" +  (task.memory.toGiga()/10 )+"g "+ "-Xmx" + (task.memory.toGiga()-8)+ "g\""
-
-	"""
-	
-	#Decontaminate from foreign genomes
-	bbwrap.sh  ${markdup_java_options} mapper=bbmap append=t in1=${pairId}_trimmed_R1.fq,${pairId}_trimmed_singletons.fq in2=${pairId}_trimmed_R2.fq,null \
-	outu=${pairId}_clean.fq outm=${pairId}_cont.fq minid=$params.mind \
-	maxindel=$params.maxindel bwr=$params.bwr bw=12 minhits=2 qtrim=rl trimq=$params.phred \
-	path=$refForeignGenome qin=$params.qin threads=${task.cpus} untrim quickmatch fast
-	
-	gzip -c ${pairId}_clean.fq > ${pairId}_clean.fq.gz
-
-	"""
-}
-
-
-/*
- *
- * Step 6:  metaphlan2 (run per sample)
- *
- */
-
-process metaphlan2 {
-	cache 'deep'
-	tag{ "metaphlan2.${pairId}" }
-
-	publishDir  "${params.outdir}/metaphlan2", mode: 'copy', pattern: "*.tsv"
-
-	input:
-	set val(pairId), file(infile) from cleanreadstometaphlan2
-	//because mpa_pkl is used for metaphlan2 and strainphlan processes it needs to be defined with a channel and referenced here with .collect() otherwise it will only run one samples
-	file mpa_pkl from mpa_pkl_m.collect()  
-	file bowtie2db from bowtie2db_ref.collect()
-
-    	output:
-	file "${pairId}_metaphlan_profile.tsv" into metaphlantohumann2, metaphlantomerge
-	file "${pairId}_bt2out.txt" into topublishprofiletaxa
-	file "${pairId}_sam.bz2" into strainphlan
-
-
-	script:
-	"""
-	#If a file with the same name is already present, Metaphlan2 will crash
-	rm -rf ${pairId}_bt2out.txt
-
-	#Estimate taxon abundances
-	metaphlan2.py --input_type fastq --tmp_dir=. --biom ${pairId}.biom --bowtie2out=${pairId}_bt2out.txt \
-	--samout ${pairId}_sam.bz2 \
-	--mpa_pkl $mpa_pkl  --bowtie2db $bowtie2db/ --bt2_ps $params.bt2options --nproc ${task.cpus} \
-	$infile ${pairId}_metaphlan_profile.tsv
-
-
-	"""
-}
-
-/*
- *
- * Step 7:  merge all metaphlan2 per sample outputs into single abundance table
- *
- */
-
-process merge_metaphlan2 {
-	cache 'deep'
-	tag{ "merge_metaphlan2_table" }
-	
-	publishDir  "${params.outdir}/metaphlan2", mode: 'copy'
-	
-	input: file('*') from metaphlantomerge.collect()
-	
-	output: file "metaphlan_merged_abundance_table.tsv"
-	
-	script:
-	"""
-
- 	merge_metaphlan_tables.py *_metaphlan_profile.tsv > metaphlan_merged_abundance_table.tsv
-	
-	"""
-	
-	
-}
-
-/*
- *
- * Step 8:  Create functional profiles with humann2 (run per sample)
- *
- */	
-
-process humann2 {
-	cache 'deep'
-	tag{ "humann2.${pairId}" }
-
-	publishDir  "${params.outdir}/humann2", mode: 'copy', pattern: "*.{tsv,log}"
-	
-	
-	input:
-	set val(pairId), file(cleanreads) from cleanreadstohumann2
-	file humann2_profile from metaphlantohumann2
-	file chocophlan from chocophlan_ref.collect()
-	file uniref from uniref_ref.collect()
-	
-    	output:
-	file "${pairId}_genefamilies.tsv"
-	file "${pairId}_pathcoverage.tsv"
-	file "${pairId}_pathabundance.tsv"
-	
-	//Those may or may not be kept, according to the value of the keepCCtmpfile parameter
-	set ("${pairId}_bowtie2_aligned.sam", "${pairId}_bowtie2_aligned.tsv", "${pairId}_diamond_aligned.tsv", 
-	     "${pairId}_bowtie2_unaligned.fa", "${pairId}_diamond_unaligned.fa") into topublishhumann2	
-
-	script:
-	"""
-	#Functional annotation
-	humann2 --input $cleanreads --output . --output-basename ${pairId} \
-	--taxonomic-profile $humann2_profile --nucleotide-database $chocophlan --protein-database $uniref \
-	--pathways metacyc --threads ${task.cpus} --memory-use maximum
-
-	
-	#Performs functional annotation, redirect is done here because HUMAnN2 freaks out
-
-
-	#Some of temporary files (if they exist) may be moved in the working directory, 
-	#according to the keepCCtmpfile parameter. Others (such as the bowties2 indexes), 
-	#are always removed. Those that should be moved, but have not been created by 
-	#HUMAnN2, are now created by the script (they are needed as output for the channel)
-	files=(${pairId}_bowtie2_aligned.sam ${pairId}_bowtie2_aligned.tsv ${pairId}_diamond_aligned.tsv \
-	${pairId}_bowtie2_unaligned.fa ${pairId}_diamond_unaligned.fa)
-	
-	for i in {1..5}
-	do
-		if [ -f ${pairId}_humann2_temp/\${files[((\$i-1))]} ]
-		then
-			mv ${pairId}_humann2_temp/\${files[((\$i-1))]} .
-		else
-			touch \${files[((\$i-1))]}
-		fi
-	done
-	rm -rf ${pairId}_humann2_temp/
-
- 	"""
-}
-
-/*
- *
- * Step 9: Strainphlan: sample2markers
- *
- */
-
-process strainphlan_1 {
-	cache 'deep'
-	tag{ "strainphlan_1" }
-	
-	publishDir  "${params.outdir}/strainphlan", mode: 'copy', pattern: "*.markers"
-			
-	input: 
-	file('*') from strainphlan.collect()
-	
-	output: 
-	file "*.markers" into sample_markers
-	
-	script:
-	"""
-	sample2markers.py --ifn_samples *sam.bz2 --input_type sam --output_dir . --nprocs ${task.cpus} &> log.txt
-
-	"""
-	
-	
-}
-/*
- *
- * Step 10:  Strainphlan strain-specific tree
- *
- */
-
-process strainphlan_2 {
-	cache 'deep'
-	tag{ "strainphlan_2" }
-	
-	publishDir  "${params.outdir}/strainphlan", mode: 'copy'
-		
-	when:
-  	params.strain_of_interest
-	
-	input: 
-	file ("*") from sample_markers.collect()
-	file mpa_pkl from mpa_pkl_s.collect()
-	file metaphlan_markers from MM.collect()
-	
-	output: 
-	file "*"
-	
-	script:
-	"""
-	strainphlan.py --mpa_pkl $mpa_pkl --ifn_samples *.markers --output_dir . --print_clades_only > clades.txt
-
-	extract_markers.py --mpa_pkl $mpa_pkl --ifn_markers $metaphlan_markers \
-	--clade $params.strain_of_interest --ofn_markers "${params.strain_of_interest}.markers.fasta"
-		
-	strainphlan.py --mpa_pkl $mpa_pkl --ifn_samples *.markers --ifn_markers "${params.strain_of_interest}.markers.fasta" --ifn_ref_genomes $params.strain_reference_genome \
-        --output_dir . --clades $params.strain_of_interest
-
-	"""
-	
-	
-}
-/*
- *
- * Step 11:  Save tmp files from metaphlan2 and humann2 if requested
- *
- */	
-	
-process saveCCtmpfile {
-	cache 'deep'
-	tag{ "saveCCtmpfile" }
-	publishDir  "${params.outdir}/CCtmpfiles", mode: 'copy'
-		
-	input:
-	file (tmpfile) from topublishprofiletaxa.mix(topublishhumann2).flatMap()
-
-	output:
-	file "$tmpfile"
-
-	when:
-	params.keepCCtmpfile
-		
-	script:
-	"""
-	echo $tmpfile
-	"""
-}
-
-/*
- *
- * Step 11: Completion e-mail notification
+ * Step 4: Completion e-mail notification
  *
  */
 workflow.onComplete {
   
-    def subject = "[uct-yamp] Successful: $workflow.runName"
+    def subject = "[fastq_QC] Successful: $workflow.runName"
     if(!workflow.success){
-      subject = "[uct-yamp] FAILED: $workflow.runName"
+      subject = "[fastq_QC] FAILED: $workflow.runName"
     }
     def email_fields = [:]
     email_fields['version'] = params.version

@@ -1,6 +1,6 @@
-# uct-yamp Installation
+# fastq_QC Installation
 
-To start using the uct-yamp, follow the steps below:
+To start using the fastq_QC, follow the steps below:
 
 1. [Install Nextflow](#install-nextflow)
 2. [Install the pipeline](#install-the-pipeline)
@@ -21,7 +21,7 @@ mv nextflow ~/bin
 sudo mv nextflow /usr/local/bin
 ```
 
-### For Univeristy of Cape Town users working on HPC (hex):
+### For Univeristy of Cape Town users working on HPC:
 ```
 #From your home directory on hex install nextflow
 curl -fsSL get.nextflow.io | bash
@@ -39,58 +39,37 @@ qsub -I -q UCTlong -l nodes=1:series600:ppn=1 -d `pwd`
 See [nextflow.io](https://www.nextflow.io/) and [NGI-NextflowDocs](https://github.com/SciLifeLab/NGI-NextflowDocs) for further instructions on how to install and configure Nextflow.
 
 ## 2) Install the Pipeline
-This pipeline itself needs no installation - NextFlow will automatically fetch it from GitHub if `uct-cbio/uct-yamp` is specified as the pipeline name when executing `nextflow run uct-cbio/uct-yamp`. If for some reason you need to use the development branch, this can be specified as `nextflow run uct-cbio/uct-yamp -r dev`
+This pipeline itself needs no installation - NextFlow will automatically fetch it from GitHub if `kviljoen/fastq_QC` is specified as the pipeline name when executing `nextflow run kviljoen/fastq_QC`. If for some reason you need to use the development branch, this can be specified as `nextflow run kviljoen/fastq_QC -r dev`
 
 ### Offline use
 
 If you need to run the pipeline on a system with no internet connection, you will need to download the files yourself from GitHub and run them directly:
 
 ```bash
-wget https://github.com/uct-cbio/uct-yamp/archive/master.zip
+wget https://github.com/kviljoen/fastq_QC/archive/master.zip
 unzip master.zip -d /my-pipelines/
 cd /my_data/
-nextflow run /my-pipelines/uct-yamp
+nextflow run /my-pipelines/fastq_QC
 ```
 ## 3) Other requirements
 
-YAMP requires a set of databases that are queried during its execution. Some of them should be automatically downloaded when installing the tools listed in the dependencies (or using specialised scripts, as those available with HUMAnN2), whilst other should be created by the user. Specifically, you will need:
+fastQC requires a list of adapter sequences:
 
 - a FASTA file listing the adapter sequences to remove in the trimming step. This file should be available within the BBmap installation. If not, please download it from [here](https://github.com/BioInfoTools/BBMap/blob/master/resources/adapters.fa);
 - two FASTA files describing synthetic contaminants. These files (`sequencing_artifacts.fa.gz` and `phix174_ill.ref.fa.gz`) should be available within the BBmap installation. If not, please download them from [here](https://sourceforge.net/projects/bbmap/);
-- a FASTA file describing the contaminating genome(s). This file should be created by the users according to the contaminants present in their dataset. When analysing human metagenome, we suggest including the human genome. Please note that this file should be indexed beforehand. This can be done using BBMap, using the following command: `bbmap.sh -Xmx24G ref=my_contaminants_genomes.fa.gz `. 
-	We suggest downloading the FASTA file provided by Brian Bushnell for removing human contamination, using the instruction available [here](http://seqanswers.com/forums/showthread.php?t=42552);
-- the BowTie2 database file for MetaPhlAn2. This file should be available within the MetaPhlAn2 installation. If not, please download it from [here](https://bitbucket.org/biobakery/metaphlan2/src/40d1bf693089836b5895623dd9ab1b21eb9a794c/db_v20/);
-- the ChocoPhlAn and UniRef databases, that can be downloaded directly by HUMAnN2, as explained [here](https://bitbucket.org/biobakery/humann2/wiki/Home#markdown-header-5-download-the-databases);
-- [optional] a phylogenetic tree used by QIIME to compute a set of alpha-diversity measures (see [here](http://qiime.org/scripts/alpha_diversity.html) for details).
-
-You can find an example of the folders layouts in this [wiki](https://github.com/alesssia/YAMP/wiki/Folders-layout-example) page.
-
-You can also download all these files (please note that it might be necessary to edit this file list according to the analysis at hand) either from Zenodo ([https://zenodo.org/record/1068229#.Wh7a3rTQqL4](https://zenodo.org/record/1068229#.Wh7a3rTQqL4)), or using the following command:
-
-```
-wget https://zenodo.org/record/1068229/files/YAMP_resources_20171128.tar.gz
-```
-
-If you use this data file, please note that, before running YAMP, the FASTA file describing the human (contaminating) genome should be indexed with the following command:
-
-```
-bbmap.sh -Xmx24G ref=hg19_main_mask_ribo_animal_allplant_allfungus.fa.gz
-```
-
-**Please also note that the size of this compressed data file is 16.7 GB.** 
 
 ## 4) Docker and/or Singularity setup
-If you are not working on UCT hex, you may have to adapt the dockerfile in this repository for your own use, e.g. to add user-defined bind points. The `Dockerfile` can be built into a docker image on your own system (where docker has been installed) as follows:
+If you are not working on UCT HPC, you may have to adapt the dockerfile in this repository for your own use, e.g. to add user-defined bind points. The `Dockerfile` can be built into a docker image on your own system (where docker has been installed) as follows:
 
 First pull the git repository e.g. :
 ```
-git clone https://github.com/uct-cbio/uct-yamp.git
+git clone https://github.com/kviljoen/fastq_QC.git
 ```
 
 Now build a local image by navigating to the folder where the `Dockerfile` is located and running the following command (be careful to add the dot!):
 
 ```
-docker build -t yampdocker .
+docker build -t fast_QC_docker .
 ```
 If you are working on a cluster environment you will likely have to convert the docker image to a singularity image. This can be done using [docker2singularity](https://github.com/singularityware/docker2singularity), e.g. as follows:
 
@@ -105,21 +84,9 @@ Next, test the singularity image:
 singularity exec /scratch/DB/bio/singularity-containers/d02667d8d22e-2018-07-23-251e39cb1b13.img /bin/bash
 ```
 
-Where `d02667d8d22e-2018-07-23-251e39cb1b13.img` is your singularity image. You are now in the singularity image environment and can test whether all software was successfully installed e.g. humann2 --help should print the relevant helpfile.
+Where `d02667d8d22e-2018-07-23-251e39cb1b13.img` is your singularity image. You are now in the singularity image environment and can test whether all software was successfully installed e.g. fastqc --help should print the relevant helpfile.
 
-## 5) Optional manual setup
-If you do not want to use the (recommended) containerised version of YAMP, you will need to install several additional tools for YAMP to work properly, and all of them should either be in the system path with execute and read permission, or made available within a multi-image scenario as the one we describe in the [multi-image scenario tutorial](https://github.com/alesssia/YAMP/wiki/multi-image-scenario).
 
-The list of tools that should be available includes:
-- fastQC v0.11.2+ ([http://www.bioinformatics.babraham.ac.uk/projects/fastqc](http://www.bioinformatics.babraham.ac.uk/projects/fastqc))
-- BBmap v36.92+ ([https://sourceforge.net/projects/bbmap](http://www.bioinformatics.babraham.ac.uk/projects/fastqc))
-- Samtools v1.3.1 ([http://samtools.sourceforge.net](http://samtools.sourceforge.net))
-- MetaPhlAn2 v2.0+ ([https://bitbucket.org/biobakery/metaphlan2](https://bitbucket.org/biobakery/metaphlan2))
-- QIIME v1.9.1+ ([http://qiime.org](http://qiime.org))
-- HUMAnN2 v0.9.9+ ([https://bitbucket.org/biobakery/humann2](https://bitbucket.org/biobakery/humann2))
-
-Following the links, you will find detailed instructions on how to install them, as explained by their developers. 
-Notably, MetaPhlAn2, QIIME, and HUMAnN2 are also available in [bioconda](https://anaconda.org/bioconda/). 
 
 ---
 

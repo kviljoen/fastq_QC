@@ -1,4 +1,4 @@
-# ![kviljoen/YAMP](/assets/cbio_logo.png)
+# ![kviljoen/fastq_QC](/assets/cbio_logo.png)
 
 # fastq_QC: fastQC, Illumina adapter removal, filtering, trimming, multiQC reports
 
@@ -7,7 +7,7 @@ This nextflow pipeline accepts raw reads in .fastq format, performs quality filt
 ## Basic usage:
 
     The typical command for running the pipeline is as follows:
-    nextflow run uct-cbio/uct-yamp --reads '*_R{1,2}.fastq.gz' -profile uct_hex
+    nextflow run kviljoen/fastq_QC --reads '*_R{1,2}.fastq.gz' -profile uct_hpc
 
     Mandatory arguments:
       --reads			Path to input data (must be surrounded with quotes)
@@ -28,7 +28,7 @@ This nextflow pipeline accepts raw reads in .fastq format, performs quality filt
       -name                     Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.
       
      Help:
-      --help			Will print out summary above when executing nextflow run uct-cbio/uct-yamp --help 
+      --help			Will print out summary above when executing nextflow run kviljoen/fastq_QC --help 
 
 
 ## Prerequisites
@@ -36,7 +36,7 @@ This nextflow pipeline accepts raw reads in .fastq format, performs quality filt
 Nextflow (0.26.x or higher), all other software/tools required are contained in the (platform-independent) dockerfile, which should be converted to a singularity image for use on a cluster environment. If you are working on the UCT cluster, all necessary singularity images are specified in the uct_hpc.conf profile. If you are working on another cluster environment you would need to build your own singularity image, using the Dockerfile in this repo as a starting point, specifying your own relevant working directories using ```RUN mkdir -p```
 
 ## Documentation
-The uct-yamp pipeline comes with documentation about the pipeline, found in the `docs/` directory:
+The pipeline comes with documentation, found in the `docs/` directory:
 
 1. [Installation](docs/installation.md)
 2. [Running the pipeline](docs/usage.md)

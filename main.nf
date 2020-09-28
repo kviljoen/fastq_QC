@@ -199,8 +199,11 @@ process bbduk {
 	set val(pairId), file("${pairId}_trimmed_R1.fq"), file("${pairId}_trimmed_R2.fq") into filteredReadsforQC
 
 	script:
-	markdup_java_options = (task.memory.toGiga() < 8) ? ${params.markdup_java_options} : "\"-Xms" +  (task.memory.toGiga()/10 )+"g "+ "-Xmx" + (task.memory.toGiga()-8)+ "g\""
-
+	//This was used on HPC
+	//markdup_java_options = (task.memory.toGiga() < 8) ? ${params.markdup_java_options} : "\"-Xms" +  (task.memory.toGiga()/10 )+"g "+ "-Xmx" + (task.memory.toGiga()-8)+ "g\""
+	
+	//This is used on Ilifu
+	markdup_java_options = task.memory.toGiga() > 8 ? params.markdup_java_options : "\"-Xms" +  (task.memory.toGiga() / 2).trunc() + "g -Xmx" + (task.memory.toGiga() - 1) + "g\""
 	"""	
 	#Quality and adapter trim:
 	bbduk.sh ${markdup_java_options} in="${reads[0]}" in2="${reads[1]}" out=${pairId}_trimmed_R1_tmp.fq \
